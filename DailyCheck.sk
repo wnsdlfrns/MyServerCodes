@@ -1,0 +1,323 @@
+#
+# 리뉴얼: EL_00
+# 디스코드: 준일#3562
+# 이메일: wnsdlfrns@naver.com
+# 제작 배경: skript 2.6-beta3 / Sk-Yaml addon 및 SkEtcR addon 필요
+#
+
+
+
+
+options:
+    G : &f&l[ &6&l내 서버 &f&l]&f
+    M : &f&l[ &6&l출석체크 &f&l]&f
+    w : &c&l(&r&e!&c&l)&r
+
+    title_gui : &f&l[ &0&l출석체크 &f&l]
+
+    main : "__Server_Data__/Users"
+    sub : "__Server_Data__/Main_Items"
+    md : "__Server_Data__/Users/_MD_gifts"
+    ad : "__Server_Data__/Users/_AD_gifts"
+
+
+
+
+
+
+every 30 seconds:
+    set {_dailycheck.resettime} to now formatted as "aa hh시 mm분"
+    if {_dailycheck.resettime} is "오후 11시 59분" or "PM 11시 59분":
+        if {daily.resettime.locked} is not set:
+            set {daily.resettime.locked} to true
+            broadcast "{@G} &e곧 출석체크 확인 데이터를 리셋합니다."
+            broadcast "{@G} &e리셋 시 렉이 발생 할 수 있음을 알려드립니다."
+
+    if {_dailycheck.resettime} is "오전 12시 00분" or "AM 12시 00분":
+        if {daily.resettime.locked} is true:
+            clear {daily.check::*}
+            delete {daily.resettime.locked}
+            if {daily.resettime.onetime} is set:
+                delete {daily.resettime.onetime} 
+            broadcast "{@G} &a출석체크 확인 데이터를 리셋하였습니다."
+            broadcast "{@G} &a출석체크가 가능합니다."
+            if size of {daily.check::*} > 0:
+                send "{@G} &6%size of {daily.check::*}%&6명의 출석체크를 초기화하였습니다!" to console
+
+
+
+
+
+on rightclick on entity:
+    if event-entity is citizen:
+        if entity's name contains "< 출석체크 >":
+            make player run command "/npc출석체크" as op
+            stop
+
+
+
+command /출석체크개인초기화 [<offlineplayer>]:
+    permission: op.*
+    permission message: &4권한이 없습니다.
+    trigger:
+        if arg 1 is not set:
+            delete {daily.check::%uuid of player%}
+            send "  {@w} &7해당 유저의 일일 출석 데이터를 초기화하였습니다."
+            stop
+
+        if arg 1 is set:
+            delete {daily.check::%uuid of arg 1%}
+            send "  {@w} &7해당 유저의 일일 출석 데이터를 초기화하였습니다."
+            stop
+
+
+command /출석체크데이터초기화:
+    permission: op.*
+    permission message: &4권한이 없습니다.
+    trigger:
+        if player is op:
+            if {daily.resettime.onetime} is not set:
+                clear {daily.check::*}
+                set {daily.resettime.onetime} to true
+                broadcast "{@G} &a출석체크 확인 데이터를 리셋하였습니다."
+                broadcast "{@G} &a출석체크가 가능합니다."
+                stop
+
+            else:
+                send "  {@w} &7출석체크 전체 데이터 초기화는 하루에 한번만 가능합니다. (오남용 방지)"
+                stop
+
+
+
+
+command /npc출석체크 [<player>]:
+    permission: op.*
+    permission message: {@w} &e스폰의 출석체크 NPC를 통해 출석체크 바랍니다!
+    trigger:
+        set {gui.offhand.%uuid of player%::*} to slot 40 of player's inventory
+        close player's inventory
+        play sound "block.chest.open" with volume 0.2 and pitch 5 for player
+        if {daily.check::%uuid of player%} is not set:
+
+            # 유저 출석 정보 불러오기 ( {_dailycheck} 가 출석정보임 )
+            set {_d} to "%{@main}%/%uuid of player%.yml"
+            load yaml {_d} as {_d}
+            set {_dailycheck} to yaml value "daily_check" from {_d}
+            unload yaml {_d}
+
+            open chest with 5 rows named "{@title_gui}" to player
+            loop 9 times:
+                set slot loop-number -1 of player's current inventory to white stained glass pane named " "
+            set slot 4 of player's current inventory to skull of "%player%" parsed as offline player named "&a&l%player%" with lore "&c> &e&l매일 오전 12시에 출석체크 확인 데이터가 리셋됩니다."
+            set slot 22 of player's current inventory to golden apple named "&b&l출석체크" with lore  "&c> &d&l클릭시 출석체크를 합니다." and "&c> &e&l상태 &8: &3미완료." and " " and "&c> &e&l출석일수 &7: &a%{_dailycheck}%&a일"
+            stop
+
+        if {daily.check::%uuid of player%} is set:
+
+            set {_d} to "%{@main}%/%uuid of player%.yml"
+            load yaml {_d} as {_d}
+            set {_dailycheck} to yaml value "daily_check" from {_d}
+            unload yaml {_d}
+
+            open chest with 5 rows named "{@title_gui}" to player
+            loop 9 times:
+                set slot loop-number -1 of player's current inventory to white stained glass pane named " "
+            set slot 4 of player's current inventory to skull of "%player%" parsed as offline player named "&a&l%player%" with lore "&c> &e&l매일 오전 12시에 출석체크 확인 데이터가 리셋됩니다."
+            set slot 22 of player's current inventory to apple named "&b&l출석체크" with lore  "&c> &d&l클릭시 출석체크를 합니다." and "&c> &e&l상태 &8: &3완료." and " " and "&c> &e&l출석일수 &7: &a%{_dailycheck}%&a일"
+
+
+
+
+on inventory click:
+    if event.getView().getTitle() contains "{@title_gui}":
+        cancel event
+
+        if event-clicktype is swap offhand:
+            close player's inventory
+            set slot 40 of player's inventory to {gui.offhand.%uuid of player%::*}
+            stop
+
+        if clicked raw slot is 4:
+
+            cancel event
+            stop
+
+        if clicked raw slot is 22:
+			
+            cancel event
+
+            if {daily.check::%uuid of player%} is not set:
+                if clicked item is golden apple:
+
+                    # 필요한 유저 프로파일 임시변수에 경로 설정
+                    set {_d} to "%{@main}%/%uuid of player%.yml"
+
+                    # 출석 코인 파일이 존재 시, 작동
+                    if Filecheking("%{@sub}%", "출석코인", "yml") is true:
+                        set {_dcdaily} to "%{@sub}%/출석코인.yml"
+                        load yaml {_dcdaily} as {_dcdaily}
+                        set {_cdaily::*} to yaml list "item_data" from {_dcdaily}
+                        unload yaml {_dcdaily}
+                    
+                    # 찰랑 코인 파일이 존재 시, 작동
+                    if Filecheking("%{@sub}%", "찰랑코인", "yml") is true:
+                        set {_dcatcrystal} to "%{@sub}%/찰랑코인.yml"
+                        load yaml {_dcatcrystal} as {_dcatcrystal}
+                        set {_catcrystal::*} to yaml list "item_data" from {_dcatcrystal}
+                        unload yaml {_dcatcrystal}
+
+                    # 파일 경로로 설정된 파일 로드
+                    load yaml {_d} as {_d}
+
+                    # 필요한 데이터를 다시 임시 변수에 설정
+                    set {_dailycheck} to yaml value "daily_check" from {_d}
+
+                    # 찰랑코인 및 작은 이벤트 코인을 위한 랜덤 integer
+                    set {_rs} to random integer between 1 and 30
+
+                    # 해당 유저가 다음날이 될때까지 출석체크를 막는 방지
+                    set {daily.check::%uuid of player%} to true
+
+
+                    # 해당 유저가 MD인 경우,
+                    if player has permission "md.*":
+
+                        if Filecheking("%{@md}%", "%uuid of player%", "yml") is not set:
+                            cYML("%{@md}%/%uuid of player%.yml", "value: name:%player%||value: uuid:%uuid of player%")
+
+                            set {_md} to "%{@md}%/%uuid of player%.yml"
+                            load yaml {_md} as {_md}
+
+                            loop 45 times:
+                                add false to {_mdgetgift::*}
+
+                            set yaml list "get_gift" from {_md} to {_mdgetgift::*}
+
+                            save yaml {_md}
+                            unload yaml {_md}
+
+                            send "  {@w} &9&lMD &b%player% &c의 월급 파일이 존재하지 않아 재생성 하였습니다!" to console
+
+
+                        set {_daycheck} to now formatted as "yyyy년_MM월"
+                        set {_daily} to now formatted as "dd일"
+
+                        set {_md} to "%{@md}%/%uuid of player%.yml"
+                        load yaml {_md} as {_md}
+
+                        set {_mdcheck::*} to yaml list "%{_daycheck}%" from {_md}
+                        set {_mdmonthly::*} to yaml list "month_lists" from {_md}
+                        set {_trigger} to true
+
+                        if {_trigger} is true:
+                            loop {_mdmonthly::*}:
+                                if loop-value is "%{_daycheck}%":
+                                    set {_monthlytrue} to true
+                            if {_monthlytrue} is not set:
+                                add "%{_daycheck}%" to {_mdmonthly::*}
+
+                        add {_daily} to {_mdcheck::*}
+
+                        set yaml list "month_lists" from {_md} to {_mdmonthly::*}
+                        set yaml list "%{_daycheck}%" from {_md} to {_mdcheck::*}
+
+                        save yaml {_md}
+
+                        unload yaml {_md}
+
+
+
+                    # 해당 유저가 AD인 경우,
+                    if player doesn't have permission "md.*":
+                        if player has permission "ad.*":
+
+                            if Filecheking("%{@ad}%", "%uuid of player%", "yml") is not set:
+                                cYML("%{@ad}%/%uuid of player%.yml", "value: name:%player%||value: uuid:%uuid of player%")
+
+                                set {_ad} to "%{@ad}%/%uuid of player%.yml"
+                                load yaml {_ad} as {_ad}
+
+                                loop 45 times:
+                                    add false to {_adgetgift::*}
+
+                                set yaml list "get_gift" from {_ad} to {_adgetgift::*}
+
+                                save yaml {_ad}
+                                unload yaml {_ad}
+
+                                send "  {@w} &c&lAD &b%player% &c의 월급 파일이 존재하지 않아 재생성 하였습니다!" to console
+
+
+                            set {_daycheck} to now formatted as "yyyy년_MM월"
+                            set {_daily} to now formatted as "dd일"
+
+                            set {_ad} to "%{@ad}%/%uuid of player%.yml"
+                            load yaml {_ad} as {_ad}
+
+                            set {_adcheck::*} to yaml list "%{_daycheck}%" from {_ad}
+                            set {_admonthly::*} to yaml list "month_lists" from {_ad}
+                            set {_trigger} to true
+
+                            if {_trigger} is true:
+                                loop {_admonthly::*}:
+                                    if loop-value is "%{_daycheck}%":
+                                        set {_monthlytrue} to true
+                                if {_monthlytrue} is not set:
+                                    add "%{_daycheck}%" to {_admonthly::*}
+
+                            add {_daily} to {_adcheck::*}
+
+                            set yaml list "month_lists" from {_ad} to {_admonthly::*}
+                            set yaml list "%{_daycheck}%" from {_ad} to {_adcheck::*}
+
+                            save yaml {_ad}
+
+                            unload yaml {_ad}
+
+
+
+                    # 출석체크 코인 지급 (__Server_Data__/Main_Items 폴더 내에 출석코인.yml 이 있을때만 작동)
+                    if Filecheking("%{@sub}%", "출석코인", "yml") is true:
+                        give 1 of {_cdaily::1} to player
+
+                    # 출석체크 일자 + 1 기능
+                    add 1 to {_dailycheck}
+                    set yaml value "daily_check" from {_d} to {_dailycheck}
+
+                    # 유저 데이터 저장 그리고 언로드
+                    save yaml {_d}
+                    unload yaml {_d}
+
+                    if {_rs} is 15:
+                        if Filecheking("%{@sub}%", "찰랑코인", "yml") is true:
+                            give 1 of {_catcrystal::1} to player
+                            titles("&a출석 완료!", "&b&l찰랑찰랑 코인&f&l을 추가로 획득하였습니다!", event-player)
+                            play sound "entity.player.levelup" with volume 0.2 and pitch 5 for player
+                            close player's inventory
+                            stop
+
+                    titles("&a출석 완료!", "&r", event-player)
+                    play sound "entity.player.levelup" with volume 0.2 and pitch 5 for player
+                    close player's inventory
+
+
+            else if {daily.check::%uuid of player%} is set:
+                if clicked item is apple:
+                    cancel event
+                    play sound "block.anvil.place" with volume 0.2 and pitch 2 for player
+                    send "{@M} &c&l이미 출석체크를 했습니다." to player
+                    close player's inventory
+                    stop
+
+
+
+
+
+
+
+
+
+
+
+
+

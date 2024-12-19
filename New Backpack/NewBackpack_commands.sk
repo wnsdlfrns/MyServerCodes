@@ -1,0 +1,161 @@
+
+
+
+
+
+
+# create_random_uuid()
+
+
+options:
+
+    sprotect: "&8[시스템 보호]&r"
+
+
+    bag_l1: "&e인벤토리에서 우-클릭시,"
+    bag_l2: "&f가방을 열 수 있다."
+    bag_l3: "줄 가방"
+    is_new: "&a&l[ 새 가방 ]"
+    bagtag: "&8[가방]&r"
+
+    inbag_l2: "&f가방을 열 수 있다. (가방에 넣을 수 있다.)"
+    inbagtag: "&8[속가방]&r"
+
+
+
+# [가방]
+# backpack_bag_format(아이템, 가방줄수, 색상, 속가방이름)
+function backpack_bag_format(i: item, row: integer, color: string, bgname: string) :: item:
+    set {_iname} to "%colored {_color}%&l&n     %{_bgname}% 가방     &r"
+    set {_l1} to {@bagtag}
+    set {_l2} to {@bag_l1}
+    set {_l3} to {@bag_l2}
+    set {_l4} to "&e%{_row}%%{@bag_l3}%"
+    set {_l5} to {@is_new}
+    set {_l6} to "&8%{_bgname}%"
+    set {_final} to {_i} named {_iname} with lore {_l1} and line_6() and {_l2} and {_l3} and "" and {_l4} and line_6() and {_l5} and {_l6}
+    return {_final}
+
+# backpack_bag_format(아이템, 가방줄수, 색상, 속가방이름)
+function backpack_bag_format_pp(i: item, row: integer, color: string, bgname: string) :: item:
+    set {_iname} to "%colored {_color}%&l&n     %{_bgname}% 가방     &r"
+    set {_l0} to {@sprotect}
+    set {_l1} to {@bagtag}
+    set {_l2} to {@bag_l1}
+    set {_l3} to {@bag_l2}
+    set {_l4} to "&e%{_row}%%{@bag_l3}%"
+    set {_l5} to {@is_new}
+    set {_l6} to "&8%{_bgname}%"
+    set {_final} to {_i} named {_iname} with lore {_l1} and line_6() and {_l2} and {_l3} and "" and {_l4} and line_6() and {_l5} and {_l6} and {_l0}
+    return {_final}
+
+# [속가방]
+# backpack_innerbag_format(아이템, 가방줄수, 색상, 속가방이름)
+function backpack_innerbag_format(i: item, row: integer, color: string, bgname: string) :: item:
+    set {_iname} to "%colored {_color}%&l&n     %{_bgname}% 속가방     &r"
+    set {_l1} to {@inbagtag}
+    set {_l2} to {@bag_l1}
+    set {_l3} to {@inbag_l2}
+    set {_l4} to "&e%{_row}%%{@bag_l3}%"
+    set {_l5} to {@is_new}
+    set {_l6} to "&8%{_bgname}%"
+    set {_final} to {_i} named {_iname} with lore {_l1} and line_6() and {_l2} and {_l3} and "" and {_l4} and line_6() and {_l5} and {_l6}
+    return {_final}
+
+function backpack_innerbag_format_pp(i: item, row: integer, color: string, bgname: string) :: item:
+    set {_iname} to "%colored {_color}%&l&n     %{_bgname}% 속가방     &r"
+    set {_l0} to {@sprotect}
+    set {_l1} to {@inbagtag}
+    set {_l2} to {@bag_l1}
+    set {_l3} to {@inbag_l2}
+    set {_l4} to "&e%{_row}%%{@bag_l3}%"
+    set {_l5} to {@is_new}
+    set {_l6} to "&8%{_bgname}%"
+    set {_final} to {_i} named {_iname} with lore {_l1} and line_6() and {_l2} and {_l3} and "" and {_l4} and line_6() and {_l5} and {_l6} and {_l0}
+    return {_final}
+
+
+
+function backpack_help_comand(p: offlineplayer, l: integer):
+    if {_l} is 1:
+        send line_empty() to {_p}
+        send "    &7[System] &f/가방태그 &e[가방/속가방]&f [가방이름색] [가방이름] [1~6]" to {_p}
+    if {_l} is 2:
+        send line_empty() to {_p}
+        send "    &7[System] &f/가방태그 [가방/속가방] &e[가방이름색]&f [가방이름] [1~6]" to {_p}
+        send "    &6[이름색]: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, a, b, c, d, e, f" to {_p}
+    if {_l} is 3:
+        send line_empty() to {_p}
+        send "    &7[System] &f/가방태그 [가방/속가방] [가방이름색] &e[가방이름]&f [1~6]" to {_p}
+    if {_l} is 4:
+        send line_empty() to {_p}
+        send "    &7[System] &f/가방태그 [가방/속가방] [가방이름색] [가방이름] &e[1~6]&f" to {_p}
+
+
+command /가방태그 [<text>] [<text>] [<text>] [<integer>]:
+    aliases: /bgtag
+    permission: op.*
+    trigger:
+
+        if player is not op:
+            stop
+
+        if player's uuid is not 주닐():
+            stop
+
+        if player's tool is air:
+            send line_empty() to player
+            send "    &7[System] &c가방이 될 아이템을 손에 들고 시도 바랍니다." to player
+            stop
+
+        set {_item} to player's tool
+
+        if arg 1 is not set:
+            backpack_help_comand(player, 1)
+            stop
+
+        if arg 2 is not set:
+            backpack_help_comand(player, 2)
+            stop
+
+        if arg 3 is not set:
+            backpack_help_comand(player, 3)
+            stop
+
+        if arg 4 is not set:
+            backpack_help_comand(player, 4)
+            stop
+
+        if arg 4 <= 0:
+            backpack_help_comand(player, 4)
+            stop
+
+        if arg 4 > 6:
+            backpack_help_comand(player, 4)
+            stop
+
+
+
+        # backpack_bag_format(아이템, 가방줄수, 색상, 속가방이름)
+        if arg 1 is "가방":
+            set player's tool to backpack_bag_format({_item}, arg 4, "&%arg 2%", arg 3)
+            stop
+
+
+            
+
+        # backpack_innerbag_format(아이템, 가방줄수, 색상, 속가방이름)
+        if arg 1 is "속가방":
+            set player's tool to backpack_innerbag_format({_item}, arg 4, "&%arg 2%", arg 3)
+            stop
+
+
+
+
+        
+        else:
+            execute player command "/가방태그"
+            stop
+
+
+

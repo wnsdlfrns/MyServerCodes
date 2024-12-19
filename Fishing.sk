@@ -1,0 +1,2123 @@
+#
+#
+#   해당 스크립트는 절대 reload 하지말것.
+#   크래시 오류 3번 있음.
+#   서버를 껐다 켜서 로딩할때는 괜찮음.
+#
+#
+
+
+
+options:
+    worlds : "Survival1" or "Survival2" or "jawonworld"
+
+    main : "__Server_Data__/Main_Items"
+    sub : "__Server_Data__/Main_Items/_cache"
+
+    cmain : "__Server_Data__/Users/_Fishing"
+
+    t : &f&l[&6&l내 서버&f&l-&b&l낚시&f&l]&r
+    w : &c&l(&r&e!&c&l)&r
+    lt : &7&l>&r
+
+    use.collections : true
+
+    b_rivers : frozen river or river
+    b_lake : taiga or sunflower plains or dark forest or snowy taiga or plains
+    b_ocean : beach or lukewarm ocean or cold ocean or frozen ocean or ocean or warm ocean
+    b_docean : deep ocean or deep cold ocean or deep frozen ocean or deep lukewarm ocean
+
+    # 무게 추가 확률 (1~5 번호가 올라가는 순으로 더 희귀한 무게!)
+    chance.1 : 50%
+    chance.2 : 30%
+    chance.3 : 20%
+    chance.4 : 10%
+
+    # 5와 6은 임시 공백
+
+    # 넵튜니움 드랍률
+    chance.7 : 3%
+    # [세계의 빛] 태그용
+    chance.7.star : 3
+
+    # 8과 9는 임시 공백
+
+    # 잉어 대
+    chance.10 : 5%
+
+    # 참다랑어 특대A - 바다일반
+    chance.11 : 1%
+
+    # 참다랑어 대A - 바다일반
+    chance.12 : 3%
+
+    # 참다랑어 특대B - 바다깊은
+    chance.13 : 3%
+
+    # 참다랑어 대B - 바다깊은
+    chance.14 : 6%
+
+    # 분홍연어 특대
+    chance.15 : 1%
+
+    # 분홍연어 대
+    chance.16 : 10%
+
+    # 문어 특대
+    chance.17 : 1%
+
+    # 문어 대
+    chance.18 : 7%
+
+    # 이벤트 관련
+    event.run.ch : 40%
+
+    event.get.1 : 10%
+    event.get.2 : 25%
+    event.get.3 : 15%
+    event.get.4 : 15%
+    event.get.5 : 10%
+    event.get.6 : 5%
+
+
+
+
+
+on command:
+    if {fising.event.cmd.%uuid of event-player%} is set:
+        if player is op:
+            delete {fising.event.cmd.%uuid of event-player%}
+            stop
+        if player has permission "md.*":
+            send "  {@w} &7MD의 권한으로 명령어 묵인 이벤트가 삭제됩니다." to event-player
+            delete {fising.event.cmd.%uuid of event-player%}
+            stop
+
+        cancel event
+
+        set {_co} to {fising.event.cmd.%uuid of event-player%}
+
+        send "  {@w} &7아무 블럭이나 &f%{_co}%&f번 &7채집하거나 파괴하세요." to event-player
+        stop
+
+
+
+on break:
+    if {fising.event.cmd.%uuid of event-player%} is set:
+        if {fising.event.cmd.%uuid of event-player%} is 1:
+            delete {fising.event.cmd.%uuid of event-player%}
+
+        if {fising.event.cmd.%uuid of event-player%} is set:
+            subtract 1 from {fising.event.cmd.%uuid of event-player%}
+
+
+
+on death:
+    if {fising.event.cmd.%uuid of event-player%} is set:
+        delete {fising.event.cmd.%uuid of event-player%}
+        if player's money >= 100000:
+            remove 100000 from player's money
+            send "  {@w} &e당신은 낚시 패널티를 받고 죽었습니다!"
+            send "  {@w} &7벌금으로 &c100,000원&7이 차감되었습니다."
+
+
+
+
+on fishing:
+    if event-player's world is {@worlds}:
+
+        # 아이템 드랍 시 플레이어 발위치 좌표 + y 0.5 에 소환되게끔.
+        set {_loc} to player's location
+        add 0.5 to y coord of {_loc}
+
+        # 바이옴 인식
+        # 강
+        if biome of event-player's location is {@b_rivers}:
+            set {fising.biome.%uuid of event-player%} to "river"
+
+        if biome of event-player's location is {@b_lake}:
+            set {fising.biome.%uuid of event-player%} to "lake"
+
+        if biome of event-player's location is {@b_ocean}:
+            set {fising.biome.%uuid of player%} to "ocean"
+
+        if biome of event-player's location is {@b_docean}:
+            set {fising.biome.%uuid of event-player%} to "deep ocean"
+
+
+
+        if "%event.getState().name()%" is "BITE":
+
+            set {_il::*} to uncolored lore of event-player's tool
+            set {_esf} to enchant level of Luck of the Sea of player's tool
+            if {_esf} is not set:
+                set {_esf} to 0
+
+            loop {_il::*}:
+                if loop-value contains "[일반 도구]":
+                    set {_true} to true
+                    set {fising.state.%uuid of event-player%} to 1
+                    chance of {@event.run.ch}:
+                        set {fising.event.%uuid of event-player%} to true
+                    stop loop
+
+                if loop-value contains "[보석의 빛]":
+                    set {_true} to true
+                    set {fising.state.%uuid of event-player%} to 2
+                    chance of {@event.run.ch}:
+                        set {fising.event.%uuid of event-player%} to true
+                    stop loop
+
+                if loop-value contains "[육중한 무게]":
+                    set {_true} to true
+                    set {fising.state.%uuid of event-player%} to 3
+                    chance of {@event.run.ch}:
+                        set {fising.event.%uuid of event-player%} to true
+                    stop loop
+
+                if loop-value contains "[바다의 보물]":
+                    set {_true} to true
+                    set {fising.state.%uuid of event-player%} to 4
+                    chance of {@event.run.ch}:
+                        set {fising.event.%uuid of event-player%} to true
+                    stop loop
+
+                if loop-value contains "[세계의 빛]":
+                    set {_true} to true
+                    set {fising.state.%uuid of event-player%} to 5
+                    set {fising.state.esf.%uuid of event-player%} to {_esf}
+                    chance of {@event.run.ch}:
+                        set {fising.event.%uuid of event-player%} to true
+                    stop loop
+
+            if {_true} is true:
+                stop
+
+            else:
+                set {fising.state.%uuid of event-player%} to 0
+
+
+        if "%event.getState().name()%" is "CAUGHT_FISH":
+
+
+            # 도감용 YML 데이터 콜링
+            if {@use.collections} is true:
+                if {fising.state.%uuid of event-player%} is not 1:
+
+                    if Filecheking("%{@cmain}%", "%uuid of player%", "yml") is not set:
+                        cYML("%{@cmain}%/%uuid of player%.yml", "value: name:%player%||value: uuid:%uuid of player%")
+
+                    set {_d} to "%{@cmain}%/%uuid of player%.yml"
+                    load yaml {_d} as {_d}
+            #
+
+
+            # 랜덤 이벤트 작동
+            if {fising.event.%uuid of event-player%} is true:
+                delete {fising.event.%uuid of event-player%}
+                set {_e} to random integer between 1 and 6
+                if {_e} is 1:
+                    chance of {@event.get.1}:
+                        set {fising.event.%uuid of event-player%} to 1
+                if {_e} is 2:
+                    chance of {@event.get.2}:
+                        set {fising.event.%uuid of event-player%} to 2
+                if {_e} is 3:
+                    chance of {@event.get.3}:
+                        set {fising.event.%uuid of event-player%} to 3
+                if {_e} is 4:
+                    chance of {@event.get.4}:
+                        set {fising.event.%uuid of event-player%} to 4
+                if {_e} is 5:
+                    chance of {@event.get.5}:
+                        set {fising.event.%uuid of event-player%} to 5
+                if {_e} is 6:
+                    chance of {@event.get.5}:
+                        set {fising.event.%uuid of event-player%} to 6
+
+
+            # 일반 낚시대
+            if {fising.state.%uuid of event-player%} is 0:
+                stop
+
+            # [일반 도구]: 내구만 조금 많은 일반적인 낚싯대
+            # " 마인크래프트 오리지널 어종 " / 강, 호수, 바다 상관 없이 오리지널 어종이 낚임
+            if {fising.state.%uuid of event-player%} is 1:
+                stop
+
+            event.getCaught().remove()
+
+            # [보석의 빛]
+            # " 강, 호수 낚시 전용 및 오리지널 어종 + 특수 어종 "
+            if {fising.state.%uuid of event-player%} is 2:
+
+                # 이벤트 구간
+                if {fising.event.%uuid of event-player%} is set:
+
+                    # 귀엽고 깜찍한 수달 이벤트
+                    if {fising.event.%uuid of event-player%} is 1:
+
+                        send colored "{@w} {@t} <##fffcac>&l귀여운척하던 수달에게 물고기를 도둑맞았습니다." to event-player
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 문어 먹물 이벤트
+                    if {fising.event.%uuid of event-player%} is 2:
+
+                        send colored "{@w} {@t} &8&l문어가 먹물을 쏘고 도망갔다!!" to event-player
+                        apply blindness 1 to event-player for 40 seconds
+
+                        delete {fising.event.%uuid of event-player%}
+                        
+
+                    # 길 잃은 이벤트
+                    if {fising.event.%uuid of event-player%} is 3:
+
+                        send colored "{@w} {@t} &8&l...여기는 어디일까요....?" to event-player
+
+                        execute console command "cmi rt %player% jawonworld"
+
+                        set {fising.event.cmd.%uuid of event-player%} to 30
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 번개 이벤트
+                    if {fising.event.%uuid of event-player%} is 4:
+
+                        send colored "{@w} {@t} <##df0000>&l아악!!! 너무 아프다...." to event-player
+
+                        create a safe explosion of force 3 at event-player
+                        strike lightning at event-player
+                        damage event-player by 8 hearts
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 독 이벤트
+                    if {fising.event.%uuid of event-player%} is 5:
+
+                        send colored "{@w} {@t} <##7eff00>&l같이 낚인 독포션에 감염되었다." to event-player
+                        apply poison 2 to event-player for 30 seconds
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+                    # VIP 티켓 이벤트
+                    if {fising.event.%uuid of event-player%} is 6:
+
+                        send colored "{@w} {@t} &7&l무언가 낚아 올렸다..." to event-player
+                        drop 1 of paper named "&f&l[ &b물고기 &e&lVIP &b판매권 &f&l]" with lore "" and "&71회 판매에 한하여 물고기 가격의 2배를" and "&7받을 수 있습니다." and "" and "&a&l거래 가능 아이템" and "&c&l(시스템 보호 아이템)" at {_loc}
+                        
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    delete {fising.event.%uuid of event-player%}
+
+
+
+                # 강
+                if {fising.biome.%uuid of event-player%} is "river":
+
+                    set {_r} to random integer between 1 and 8
+
+                    if {_r} is 1:
+                        send action bar "&a&l+ 대구" to event-player
+                        drop 1 of cod at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 연어" to event-player
+                        drop 1 of salmon at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 열대어" to event-player
+                        drop 1 of tropical fish at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 복어" to event-player
+                        drop 1 of pufferfish at {_loc}
+
+                    if {_r} is 5:
+                        send action bar "&a&l+ 민물고기" to event-player
+                        drop 1 of {fishing.fish.민물고기::1} with lore "" and "&8민물고기" and "&8[평범]" at {_loc}
+
+                    if {_r} is 6:
+                        send action bar "&a&l+ 민물가재" to event-player
+                        drop 1 of {fishing.fish.민물가재::1} with lore "" and "&8민물가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 7:
+                        send action bar "&a&l+ 노가리" to event-player
+                        drop 1 of {fishing.fish.노가리::1} with lore "" and "&8노가리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 8:
+                        send action bar "&a&l+ 농성어" to event-player
+                        drop 1 of {fishing.fish.농성어::1} with lore "" and "&8농성어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+                # 호수
+                if {fising.biome.%uuid of event-player%} is "lake":
+
+                    set {_r} to random integer between 1 and 9
+
+                    if {_r} is 1:
+                        send action bar "&a&l+ 대구" to event-player
+                        drop 1 of cod at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 연어" to event-player
+                        drop 1 of salmon at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 열대어" to event-player
+                        drop 1 of tropical fish at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 복어" to event-player
+                        drop 1 of pufferfish at {_loc}
+
+                    if {_r} is 5:
+                        send action bar "&a&l+ 민물고기" to event-player
+                        drop 1 of {fishing.fish.민물고기::1} with lore "" and "&8민물고기" and "&8[평범]" at {_loc}
+
+                    if {_r} is 6:
+                        send action bar "&a&l+ 민물가재" to event-player
+                        drop 1 of {fishing.fish.민물가재::1} with lore "" and "&8민물가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 7:
+                        send action bar "&a&l+ 농성어" to event-player
+                        drop 1 of {fishing.fish.농성어::1} with lore "" and "&8농성어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 8:
+                        send action bar "&a&l+ 틸라피아" to event-player
+                        drop 1 of {fishing.fish.틸라피아::1} with lore "" and "&8틸라피아" and "&8[평범]" at {_loc}
+
+                    if {_r} is 9:
+
+                        # 대 (15 ~ 50 kg)
+                        chance of {@chance.10}:
+
+                            set {_kg} to random integer between 15 and 50
+                            set {_g} to random integer between 1 and 9
+                            if {_kg} >= 50:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.잉어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f잉어" and "" and "&8[특별]" at {_loc}
+                            send action bar "&a&l+ 잉어(대)" to event-player
+                            broadcast "{@t} &b%event-player%&e님께서 &a잉어(대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "잉어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+                            stop
+
+                        drop 1 of {fishing.fish.잉어::1} with lore "" and "&8잉어" and "&8[평범]" at {_loc}
+                        send action bar "&a&l+ 잉어" to event-player
+
+                    unload yaml {_d}
+                        
+                    stop
+
+                else:
+                    send action bar "&e&l이 낚싯대는 여기에서 사용이 불가능해보인다." to event-player
+                    stop
+
+
+            # [육중한 무게]
+            # " 바다-일반 낚시 전용 및 특수 어종 " / 특이사항: 제한된 확률로 넵튠 조각(1) 획득 (행운적용x)
+            if {fising.state.%uuid of event-player%} is 3:
+
+
+                # 이벤트 구간
+                if {fising.event.%uuid of event-player%} is set:
+
+                    # 귀엽고 깜찍한 수달 이벤트
+                    if {fising.event.%uuid of event-player%} is 1:
+
+                        send colored "{@w} {@t} <##fffcac>&l귀여운척하던 수달에게 물고기를 도둑맞았습니다." to event-player
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 문어 먹물 이벤트
+                    if {fising.event.%uuid of event-player%} is 2:
+
+                        send colored "{@w} {@t} &8&l문어가 먹물을 쏘고 도망갔다!!" to event-player
+                        apply blindness 1 to event-player for 40 seconds
+
+                        delete {fising.event.%uuid of event-player%}
+                        
+
+                    # 길 잃은 이벤트
+                    if {fising.event.%uuid of event-player%} is 3:
+
+                        send colored "{@w} {@t} &8&l...여기는 어디일까요....?" to event-player
+
+                        execute console command "cmi rt %player% jawonworld"
+
+                        set {fising.event.cmd.%uuid of event-player%} to 30
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 번개 이벤트
+                    if {fising.event.%uuid of event-player%} is 4:
+
+                        send colored "{@w} {@t} <##df0000>&l아악!!! 너무 아프다...." to event-player
+
+                        create a safe explosion of force 3 at event-player
+                        strike lightning at event-player
+                        damage event-player by 8 hearts
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 독 이벤트
+                    if {fising.event.%uuid of event-player%} is 5:
+
+                        send colored "{@w} {@t} <##7eff00>&l같이 낚인 독포션에 감염되었다." to event-player
+                        apply poison 2 to event-player for 30 seconds
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+                    # VIP 티켓 이벤트
+                    if {fising.event.%uuid of event-player%} is 6:
+
+                        send colored "{@w} {@t} &7&l무언가 낚아 올렸다..." to event-player
+                        drop 1 of paper named "&f&l[ &b물고기 &e&lVIP &b판매권 &f&l]" with lore "" and "&71회 판매에 한하여 물고기 가격의 2배를" and "&7받을 수 있습니다." and "" and "&a&l거래 가능 아이템" and "&c&l(시스템 보호 아이템)" at {_loc}
+                        
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    delete {fising.event.%uuid of event-player%}
+
+
+
+                # 바다-일반
+                if {fising.biome.%uuid of event-player%} is "ocean":
+
+                    set {_r} to random integer between 1 and 5
+
+                    # 3% 확률로 넵튜니움 조각 드랍
+                    chance of {@chance.7}:
+                        drop 1 of {fishing.fish.넵튠조각::1} at {_loc}
+                        play sound "item.trident.return" with volume 0.4 and pitch 2 for event-player
+
+                    if {_r} is 1:
+
+                        # 특대 (700 ~ 2000 kg)
+                        chance of {@chance.11}:
+
+                            set {_kg} to random integer between 700 and 800
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 700 and 900
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 700 and 1200
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 700 and 1500
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 700 and 2000
+
+
+                            if {_kg} >= 2000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (400 ~ 699 kg)
+                        chance of {@chance.12}:
+
+                            set {_kg} to random integer between 400 and 450
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 400 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 400 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 400 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 400 and 699
+
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+
+                        send action bar "&a&l+ 참다랑어" to event-player
+                        drop 1 of {fishing.fish.참다랑어::1} with lore "" and "&8참다랑어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 오징어" to event-player
+                        drop 1 of {fishing.fish.오징어::1} with lore "" and "&8오징어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 해파리" to event-player
+                        drop 1 of {fishing.fish.해파리::1} with lore "" and "&8해파리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 바닷가재" to event-player
+                        drop 1 of {fishing.fish.바닷가재::1} with lore "" and "&8바닷가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 5:
+
+                        # 특대 (450 ~ 700 kg)
+                        chance of {@chance.15}:
+
+                            set {_kg} to random integer between 450 and 475
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 450 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 450 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 450 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 450 and 700
+
+
+                            if {_kg} >= 700:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+
+                        # 대 (200 ~ 449 kg)
+                        chance of {@chance.16}:
+
+                            set {_kg} to random integer between 200 and 250
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 200 and 300
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 200 and 350
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 200 and 400
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 200 and 449
+
+
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 분홍연어" to event-player
+                        drop 1 of {fishing.fish.분홍연어::1} with lore "" and "&8분홍연어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+                else:
+                    send action bar "&e&l이 낚싯대는 여기에서 사용이 불가능해보인다." to event-player
+                    stop
+
+
+            # [바다의 보물]
+            # " 전체 낚시 전용 및 특수 어종 " / 특이사항: 각 지역에 추가된 특수 어종'만' 잡힘
+            if {fising.state.%uuid of event-player%} is 4:
+
+
+                # 이벤트 구간
+                if {fising.event.%uuid of event-player%} is set:
+
+                    # 귀엽고 깜찍한 수달 이벤트
+                    if {fising.event.%uuid of event-player%} is 1:
+
+                        send colored "{@w} {@t} <##fffcac>&l귀여운척하던 수달에게 물고기를 도둑맞았습니다." to event-player
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 문어 먹물 이벤트
+                    if {fising.event.%uuid of event-player%} is 2:
+
+                        send colored "{@w} {@t} &8&l문어가 먹물을 쏘고 도망갔다!!" to event-player
+                        apply blindness 1 to event-player for 40 seconds
+
+                        delete {fising.event.%uuid of event-player%}
+                        
+
+                    # 길 잃은 이벤트
+                    if {fising.event.%uuid of event-player%} is 3:
+
+                        send colored "{@w} {@t} &8&l...여기는 어디일까요....?" to event-player
+
+                        execute console command "cmi rt %player% jawonworld"
+
+                        set {fising.event.cmd.%uuid of event-player%} to 30
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 번개 이벤트
+                    if {fising.event.%uuid of event-player%} is 4:
+
+                        send colored "{@w} {@t} <##df0000>&l아악!!! 너무 아프다...." to event-player
+
+                        create a safe explosion of force 3 at event-player
+                        strike lightning at event-player
+                        damage event-player by 8 hearts
+
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    # 독 이벤트
+                    if {fising.event.%uuid of event-player%} is 5:
+
+                        send colored "{@w} {@t} <##7eff00>&l같이 낚인 독포션에 감염되었다." to event-player
+                        apply poison 2 to event-player for 30 seconds
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+                    # VIP 티켓 이벤트
+                    if {fising.event.%uuid of event-player%} is 6:
+
+                        send colored "{@w} {@t} &7&l무언가 낚아 올렸다..." to event-player
+                        drop 1 of paper named "&f&l[ &b물고기 &e&lVIP &b판매권 &f&l]" with lore "" and "&71회 판매에 한하여 물고기 가격의 2배를" and "&7받을 수 있습니다." and "" and "&a&l거래 가능 아이템" and "&c&l(시스템 보호 아이템)" at {_loc}
+                        
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    delete {fising.event.%uuid of event-player%}
+
+
+                # 강
+                if {fising.biome.%uuid of event-player%} is "river":
+
+                    set {_r} to random integer between 1 and 4
+
+                    if {_r} is 1:
+                        send action bar "&a&l+ 민물고기" to event-player
+                        drop 1 of {fishing.fish.민물고기::1} with lore "" and "&8민물고기" and "&8민물고기" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 민물가재" to event-player
+                        drop 1 of {fishing.fish.민물가재::1} with lore "" and "&8민물가재" and "&8민물가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 노가리" to event-player
+                        drop 1 of {fishing.fish.노가리::1} with lore "" and "&8노가리" and "&8노가리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 농성어" to event-player
+                        drop 1 of {fishing.fish.농성어::1} with lore "" and "&8농성어" and "&8농성어" and "&8[평범]" at {_loc}
+
+                    stop
+
+                # 호수
+                if {fising.biome.%uuid of event-player%} is "lake":
+
+                    set {_r} to random integer between 1 and 5
+
+                    if {_r} is 1:
+                        send action bar "&a&l+ 민물고기" to event-player
+                        drop 1 of {fishing.fish.민물고기::1} with lore "" and "&8민물고기" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 민물가재" to event-player
+                        drop 1 of {fishing.fish.민물가재::1} with lore "" and "&8민물가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 농성어" to event-player
+                        drop 1 of {fishing.fish.농성어::1} with lore "" and "&8농성어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 틸라피아" to event-player
+                        drop 1 of {fishing.fish.틸라피아::1} with lore "" and "&8탈라피아" and "&8[평범]" at {_loc}
+
+                    if {_r} is 5:
+
+                        # 대 (15 ~ 50 kg)
+                        chance of {@chance.10}:
+
+                            set {_kg} to random integer between 15 and 50
+                            set {_g} to random integer between 1 and 9
+                            if {_kg} >= 50:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.잉어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f잉어" and "" and "&8[특별]" at {_loc}
+                            send action bar "&a&l+ 잉어(대)" to event-player
+                            broadcast "{@t} &b%event-player%&e님께서 &a잉어(대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "잉어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        drop 1 of {fishing.fish.잉어::1} with lore "" and "&8잉어" and "&8[평범]" at {_loc}
+                        send action bar "&a&l+ 잉어" to event-player
+
+                    unload yaml {_d}
+                        
+                    stop
+
+
+                # 바다-일반
+                if {fising.biome.%uuid of event-player%} is "ocean":
+
+                    set {_r} to random integer between 1 and 5
+
+                    # 3% 확률로 넵튜니움 조각 드랍
+                    chance of {@chance.7}:
+                        drop 1 of {fishing.fish.넵튠조각::1} at {_loc}
+                        play sound "item.trident.return" with volume 0.4 and pitch 2 for event-player
+
+                    if {_r} is 1:
+
+                        # 특대 (700 ~ 2000 kg)
+                        chance of {@chance.11}:
+
+                            set {_kg} to random integer between 700 and 800
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 700 and 900
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 700 and 1200
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 700 and 1500
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 700 and 2000
+
+
+                            if {_kg} >= 2000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (400 ~ 699 kg)
+                        chance of {@chance.12}:
+
+                            set {_kg} to random integer between 400 and 450
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 400 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 400 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 400 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 400 and 699
+
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+
+                        send action bar "&a&l+ 참다랑어" to event-player
+                        drop 1 of {fishing.fish.참다랑어::1} with lore "" and "&8참다랑어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 오징어" to event-player
+                        drop 1 of {fishing.fish.오징어::1} with lore "" and "&8오징어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 해파리" to event-player
+                        drop 1 of {fishing.fish.해파리::1} with lore "" and "&8해파리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 바닷가재" to event-player
+                        drop 1 of {fishing.fish.바닷가재::1} with lore "" and "&8바닷가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 5:
+
+                        # 특대 (450 ~ 700 kg)
+                        chance of {@chance.15}:
+
+                            set {_kg} to random integer between 450 and 475
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 450 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 450 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 450 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 450 and 700
+
+
+                            if {_kg} >= 700:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (200 ~ 449 kg)
+                        chance of {@chance.16}:
+
+                            set {_kg} to random integer between 200 and 250
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 200 and 300
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 200 and 350
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 200 and 400
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 200 and 449
+
+
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 분홍연어" to event-player
+                        drop 1 of {fishing.fish.분홍연어::1} with lore "" and "&8분홍연어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+
+                # 바다-깊은곳
+                if {fising.biome.%uuid of event-player%} is "deep ocean":
+
+                    set {_r} to random integer between 1 and 7
+
+                    # 3% 확률로 넵튜니움 조각 드랍
+                    chance of {@chance.7}:
+                        drop 1 of {fishing.fish.넵튠조각::1} at {_loc}
+                        play sound "item.trident.return" with volume 0.4 and pitch 2 for event-player
+
+                    if {_r} is 1:
+
+                        # 특대 (700 ~ 2000 kg)
+                        chance of {@chance.13}:
+
+                            set {_kg} to random integer between 700 and 800
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 700 and 900
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 700 and 1200
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 700 and 1500
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 700 and 2000
+
+
+                            if {_kg} >= 2000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (400 ~ 699 kg)
+                        chance of {@chance.14}:
+
+                            set {_kg} to random integer between 400 and 450
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 400 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 400 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 400 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 400 and 699
+
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+
+                        send action bar "&a&l+ 참다랑어" to event-player
+                        drop 1 of {fishing.fish.참다랑어::1} with lore "" and "&8참다랑어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 오징어" to event-player
+                        drop 1 of {fishing.fish.오징어::1} with lore "" and "&8오징어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 해파리" to event-player
+                        drop 1 of {fishing.fish.해파리::1} with lore "" and "&8해파리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 바닷가재" to event-player
+                        drop 1 of {fishing.fish.바닷가재::1} with lore "" and "&8바닷가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 5:
+
+                        # 특대 (450 ~ 700 kg)
+                        chance of {@chance.15}:
+
+                            set {_kg} to random integer between 450 and 475
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 450 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 450 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 450 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 450 and 700
+
+
+                            if {_kg} >= 700:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (200 ~ 449 kg)
+                        chance of {@chance.16}:
+
+                            set {_kg} to random integer between 200 and 250
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 200 and 300
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 200 and 350
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 200 and 400
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 200 and 449
+
+
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 분홍연어" to event-player
+                        drop 1 of {fishing.fish.분홍연어::1} with lore "" and "&8분홍연어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 6:
+                        send action bar "&a&l+ 붉은 돔" to event-player
+                        drop 1 of {fishing.fish.붉은돔::1} with lore "" and "&8붉은돔" and "&8[평범]" at {_loc}
+
+                    if {_r} is 7:
+
+                        # 특대 (1000 ~ 5000 kg)
+                        chance of {@chance.17}:
+
+                            set {_kg} to 1000
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 1000 and 1250
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 1000 and 1500
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 1000 and 2000
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 1000 and 5000
+
+
+                            if {_kg} >= 5000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.문어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f문어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a문어(특대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "문어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            send action bar "&a&l+ 문어(특대)" to event-player
+                            stop
+
+                        # 대 (500 ~ 999 kg)
+                        chance of {@chance.18}:
+
+                            set {_kg} to 500
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 500 and 550
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 500 and 650
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 500 and 750
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 500 and 999
+
+
+                            drop 1 of {fishing.fish.문어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f문어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a문어(대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+                            send action bar "&a&l+ 문어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "문어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 문어" to event-player
+                        drop 1 of {fishing.fish.문어::1} with lore "" and "&8문어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+                else:
+                    send action bar "&e&l이 낚싯대는 여기에서 사용이 불가능해보인다." to event-player
+                    stop
+
+            # [세계의 빛]
+            # " 전체 낚시 전용 및 오리지널 어종 + 특수 어종 " / 특이사항: 모든 지역의 특산물과 오리지널 어종이 같이 잡힘
+            if {fising.state.%uuid of event-player%} is 5:
+
+
+                # 이벤트 구간
+                if {fising.event.%uuid of event-player%} is set:
+
+                    # 귀엽고 깜찍한 수달 이벤트
+                    if {fising.event.%uuid of event-player%} is 1:
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+                    # 문어 먹물 이벤트
+                    if {fising.event.%uuid of event-player%} is 2:
+
+                        delete {fising.event.%uuid of event-player%}
+                        
+
+                    # 길 잃은 이벤트
+                    if {fising.event.%uuid of event-player%} is 3:
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+                    # 번개 이벤트
+                    if {fising.event.%uuid of event-player%} is 4:
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+
+                    # 독 이벤트
+                    if {fising.event.%uuid of event-player%} is 5:
+
+                        delete {fising.event.%uuid of event-player%}
+
+
+                    # VIP 티켓 이벤트
+                    if {fising.event.%uuid of event-player%} is 6:
+
+                        send colored "{@w} {@t} &7&l무언가 낚아 올렸다..." to event-player
+                        drop 1 of paper named "&f&l[ &b물고기 &e&lVIP &b판매권 &f&l]" with lore "" and "&71회 판매에 한하여 물고기 가격의 2배를" and "&7받을 수 있습니다." and "" and "&a&l거래 가능 아이템" and "&c&l(시스템 보호 아이템)" at {_loc}
+                        
+                        delete {fising.event.%uuid of event-player%}
+                        stop
+
+
+                    delete {fising.event.%uuid of event-player%}
+
+
+
+                if {fising.biome.%uuid of event-player%} is "river":
+
+                    set {_r} to random integer between 1 and 8
+
+                    if {_r} is 1:
+                        send action bar "&a&l+ 대구" to event-player
+                        drop 1 of cod at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 연어" to event-player
+                        drop 1 of salmon at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 열대어" to event-player
+                        drop 1 of tropical fish at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 복어" to event-player
+                        drop 1 of pufferfish at {_loc}
+
+                    if {_r} is 5:
+                        send action bar "&a&l+ 민물고기" to event-player
+                        drop 1 of {fishing.fish.민물고기::1} with lore "" and "&8민물고기" and "&8[평범]" at {_loc}
+
+                    if {_r} is 6:
+                        send action bar "&a&l+ 민물가재" to event-player
+                        drop 1 of {fishing.fish.민물가재::1} with lore "" and "&8민물가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 7:
+                        send action bar "&a&l+ 노가리" to event-player
+                        drop 1 of {fishing.fish.노가리::1} with lore "" and "&8노가리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 8:
+                        send action bar "&a&l+ 농성어" to event-player
+                        drop 1 of {fishing.fish.농성어::1} with lore "" and "&8농성어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+                # 호수
+                if {fising.biome.%uuid of player%} is "lake":
+
+                    set {_r} to random integer between 1 and 9
+
+                    if {_r} is 1:
+                        send action bar "&a&l+ 대구" to event-player
+                        drop 1 of cod at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 연어" to event-player
+                        drop 1 of salmon at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 열대어" to event-player
+                        drop 1 of tropical fish at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 복어" to event-player
+                        drop 1 of pufferfish at {_loc}
+
+                    if {_r} is 5:
+                        send action bar "&a&l+ 민물고기" to event-player
+                        drop 1 of {fishing.fish.민물고기::1} with lore "" and "&8민물고기" and "&8[평범]" at {_loc}
+
+                    if {_r} is 6:
+                        send action bar "&a&l+ 민물가재" to event-player
+                        drop 1 of {fishing.fish.민물가재::1} with lore "" and "&8민물가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 7:
+                        send action bar "&a&l+ 농성어" to event-player
+                        drop 1 of {fishing.fish.농성어::1} with lore "" and "&8농성어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 8:
+                        send action bar "&a&l+ 틸라피아" to event-player
+                        drop 1 of {fishing.fish.틸라피아::1} with lore "" and "&8탈라피아" and "&8[평범]" at {_loc}
+
+                    if {_r} is 9:
+
+                        # 대 (15 ~ 50 kg)
+                        chance of {@chance.10}:
+
+                            set {_kg} to random integer between 15 and 50
+                            set {_g} to random integer between 1 and 9
+                            if {_kg} >= 50:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.잉어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f잉어" and "" and "&8[특별]" at {_loc}
+                            send action bar "&a&l+ 잉어(대)" to event-player
+                            broadcast "{@t} &b%event-player%&e님께서 &a잉어(대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "잉어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        drop 1 of {fishing.fish.잉어::1} with lore "" and "&8잉어" and "&8[평범]" at {_loc}
+                        send action bar "&a&l+ 잉어" to event-player
+
+                    unload yaml {_d}
+
+                    stop
+
+
+                # 바다-일반
+                if {fising.biome.%uuid of event-player%} is "ocean":
+
+                    set {_r} to random integer between 1 and 5
+
+                    set {_neptchance} to {@chance.7.star}
+
+                    if {fising.state.esf.%uuid of event-player%} > 0:
+                        set {_totalchance} to {_neptchance} + {fising.state.esf.%uuid of event-player%}
+
+
+                    # 3% 확률로 넵튜니움 조각 드랍
+                    chance of {_totalchance}%:
+                        drop 1 of {fishing.fish.넵튠조각::1} at {_loc}
+                        play sound "item.trident.return" with volume 0.4 and pitch 2 for event-player
+
+                    if {_r} is 1:
+
+                        # 특대 (700 ~ 2000 kg)
+                        chance of {@chance.11}:
+
+                            set {_kg} to random integer between 700 and 800
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 700 and 900
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 700 and 1200
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 700 and 1500
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 700 and 2000
+
+
+                            if {_kg} >= 2000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (400 ~ 699 kg)
+                        chance of {@chance.12}:
+
+                            set {_kg} to random integer between 400 and 450
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 400 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 400 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 400 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 400 and 699
+
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+
+                        send action bar "&a&l+ 참다랑어" to event-player
+                        drop 1 of {fishing.fish.참다랑어::1} with lore "" and "&8참다랑어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 오징어" to event-player
+                        drop 1 of {fishing.fish.오징어::1} with lore "" and "&8오징어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 해파리" to event-player
+                        drop 1 of {fishing.fish.해파리::1} with lore "" and "&8해파리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 바닷가재" to event-player
+                        drop 1 of {fishing.fish.바닷가재::1} with lore "" and "&8바닷가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 5:
+
+                        # 특대 (450 ~ 700 kg)
+                        chance of {@chance.15}:
+
+                            set {_kg} to random integer between 450 and 475
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 450 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 450 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 450 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 450 and 700
+
+
+                            if {_kg} >= 700:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (200 ~ 449 kg)
+                        chance of {@chance.16}:
+
+                            set {_kg} to random integer between 200 and 250
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 200 and 300
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 200 and 350
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 200 and 400
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 200 and 449
+
+
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 분홍연어" to event-player
+                        drop 1 of {fishing.fish.분홍연어::1} with lore "" and "&8분홍연어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+
+                # 바다-깊은곳
+                if {fising.biome.%uuid of event-player%} is "deep ocean":
+
+                    set {_r} to random integer between 1 and 7
+
+                    set {_neptchance} to {@chance.7.star}
+
+                    if {fising.state.esf.%uuid of event-player%} > 0:
+                        set {_totalchance} to {_neptchance} + {fising.state.esf.%uuid of event-player%}
+
+                    # 3% 확률로 넵튜니움 조각 드랍
+                    chance of {_totalchance}%:
+                        drop 1 of {fishing.fish.넵튠조각::1} at {_loc}
+                        play sound "item.trident.return" with volume 0.4 and pitch 2 for event-player
+
+                    if {_r} is 1:
+
+                        # 특대 (700 ~ 2000 kg)
+                        chance of {@chance.13}:
+
+                            set {_kg} to random integer between 700 and 800
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 700 and 900
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 700 and 1200
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 700 and 1500
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 700 and 2000
+
+
+                            if {_kg} >= 2000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (400 ~ 699 kg)
+                        chance of {@chance.14}:
+
+                            set {_kg} to random integer between 400 and 450
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 400 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 400 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 400 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 400 and 699
+
+
+                            drop 1 of {fishing.fish.참다랑어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f참다랑어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a참다랑어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 참다랑어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "참다랑어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+
+                        send action bar "&a&l+ 참다랑어" to event-player
+                        drop 1 of {fishing.fish.참다랑어::1} with lore "" and "&8참다랑어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 2:
+                        send action bar "&a&l+ 오징어" to event-player
+                        drop 1 of {fishing.fish.오징어::1} with lore "" and "&8오징어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 3:
+                        send action bar "&a&l+ 해파리" to event-player
+                        drop 1 of {fishing.fish.해파리::1} with lore "" and "&8해파리" and "&8[평범]" at {_loc}
+
+                    if {_r} is 4:
+                        send action bar "&a&l+ 바닷가재" to event-player
+                        drop 1 of {fishing.fish.바닷가재::1} with lore "" and "&8바닷가재" and "&8[평범]" at {_loc}
+
+                    if {_r} is 5:
+
+                        # 특대 (450 ~ 700 kg)
+                        chance of {@chance.15}:
+
+                            set {_kg} to random integer between 450 and 475
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 450 and 500
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 450 and 550
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 450 and 600
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 450 and 700
+
+
+                            if {_kg} >= 700:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(특대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (200 ~ 449 kg)
+                        chance of {@chance.16}:
+
+                            set {_kg} to random integer between 200 and 250
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 200 and 300
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 200 and 350
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 200 and 400
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 200 and 449
+
+
+
+                            drop 1 of {fishing.fish.분홍연어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f분홍연어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a분홍연어(대)&e를 낚으셨습니다!"
+                            send action bar "&a&l+ 분홍연어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "분홍연어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 분홍연어" to event-player
+                        drop 1 of {fishing.fish.분홍연어::1} with lore "" and "&8분홍연어" and "&8[평범]" at {_loc}
+
+                    if {_r} is 6:
+                        send action bar "&a&l+ 붉은 돔" to event-player
+                        drop 1 of {fishing.fish.붉은돔::1} with lore "" and "&8붉은돔" and "&8[평범]" at {_loc}
+
+                    if {_r} is 7:
+
+                        # 특대 (1000 ~ 5000 kg)
+                        chance of {@chance.17}:
+
+                            set {_kg} to 1000
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 1000 and 1250
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 1000 and 1500
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 1000 and 2000
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 1000 and 5000
+
+
+                            if {_kg} >= 5000:
+                                set {_g} to 0
+
+                            drop 1 of {fishing.fish.문어::1} with lore "" and "{@lt} &a크기: &e특대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f문어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a문어(특대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+                            send action bar "&a&l+ 문어(특대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "문어_특대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        # 대 (500 ~ 999 kg)
+                        chance of {@chance.18}:
+
+                            set {_kg} to 500
+                            set {_g} to random integer between 1 and 9
+
+
+                            chance of {@chance.1}:
+                                set {_kg} to random integer between 500 and 550
+
+                            chance of {@chance.2}:
+                                set {_kg} to random integer between 500 and 650
+
+                            chance of {@chance.3}:
+                                set {_kg} to random integer between 500 and 750
+
+                            chance of {@chance.4}:
+                                set {_kg} to random integer between 500 and 999
+
+
+                            drop 1 of {fishing.fish.문어::1} with lore "" and "{@lt} &a크기: &e대" and "{@lt} &d무게: &f%{_kg}%&f.&f%{_g}% &fkg" and "{@lt} &b어종: &f문어" and "" and "&8[특별]" at {_loc}
+                            broadcast "{@t} &b%event-player%&e님께서 &a문어(대) &7%{_kg}%&7.&7%{_g}%&7kg &e를 낚으셨습니다!"
+                            send action bar "&a&l+ 문어(대)" to event-player
+
+
+                            # 도감 기록 사용시 별도 작동
+                            if {@use.collections} is true:
+                                set yaml value "문어_대" from {_d} to "%{_kg}%.%{_g}%"
+                                save yaml {_d}
+                                unload yaml {_d}
+
+
+                            stop
+
+                        send action bar "&a&l+ 문어" to event-player
+                        drop 1 of {fishing.fish.문어::1} with lore "" and "&8문어" and "&8[평범]" at {_loc}
+
+                    unload yaml {_d}
+
+                    stop
+
+                else:
+                    send action bar "&e&l이 낚싯대는 여기에서 사용이 불가능해보인다." to event-player
+                    stop
+
+
+
+
+
+
+
+command /등록낚시특수어종:
+    permission: op.*
+    permission message: &4권한이 없습니다.
+    trigger:
+        if player is op:
+
+            send "  {@w} &a특수 어종 등록을 시작합니다!"
+
+            # 중복 등록 방지를 위한 파일 검토:
+            # __Server_Data__/Main_Items/_cache/fish_registed.yml
+            if Filecheking("%{@sub}%", "fish_registed", "yml") is true:
+
+                send ""
+                send "  {@w} &7중복 등록 방지가 작동하여 등록을 취소합니다."
+                send "  {@w} &7특수 어종을 재등록해야한다면,"
+                send "  {@w} &e__Server_Data__/Main_Items/_cache/fish_registed.yml"
+                send "  {@w} &c파일을 삭제 후 재시도 하여주시기 바랍니다."
+
+                stop
+
+            else:
+
+                # 중복 등록 방지 파일 생성
+                cYML("%{@sub}%/fish_registed.yml", "value: register_name:%player%||value: uuid:%uuid of player%||value: time: %now%")
+
+                # 어종 목록이 존재하는지 확인
+                # 
+                if Filecheking("%{@main}%", "낚시_민물고기", "yml") is true:
+                    add "민물고기" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_민물가재", "yml") is true:
+                    add "민물가재" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_노가리", "yml") is true:
+                    add "노가리" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_농성어", "yml") is true:
+                    add "농성어" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_틸라피아", "yml") is true:
+                    add "틸라피아" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_잉어", "yml") is true:
+                    add "잉어" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_참다랑어", "yml") is true:
+                    add "참다랑어" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_오징어", "yml") is true:
+                    add "오징어" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_해파리", "yml") is true:
+                    add "해파리" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_바닷가재", "yml") is true:
+                    add "바닷가재" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_분홍연어", "yml") is true:
+                    add "분홍연어" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_붉은돔", "yml") is true:
+                    add "붉은돔" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_문어", "yml") is true:
+                    add "문어" to {_fl::*}
+
+                if Filecheking("%{@main}%", "낚시_넵튠조각", "yml") is true:
+                    add "넵튠조각" to {_fl::*}
+
+                if size of {_fl::*} is 14:
+
+                    #
+                    set {_d01} to "%{@main}%/낚시_민물고기.yml"
+                    set {_d02} to "%{@main}%/낚시_민물가재.yml"
+                    set {_d03} to "%{@main}%/낚시_노가리.yml"
+                    set {_d04} to "%{@main}%/낚시_농성어.yml"
+                    #
+                    set {_d05} to "%{@main}%/낚시_탈라피아.yml"
+                    set {_d06} to "%{@main}%/낚시_잉어.yml"
+                    set {_d07} to "%{@main}%/낚시_참다랑어.yml"
+                    set {_d08} to "%{@main}%/낚시_오징어.yml"
+                    #
+                    set {_d09} to "%{@main}%/낚시_해파리.yml"
+                    set {_d10} to "%{@main}%/낚시_바닷가재.yml"
+                    set {_d11} to "%{@main}%/낚시_분홍연어.yml"
+                    set {_d12} to "%{@main}%/낚시_붉은돔.yml"
+                    #
+                    set {_d13} to "%{@main}%/낚시_문어.yml"
+                    set {_d14} to "%{@main}%/낚시_넵튠조각.yml"
+                    #
+
+                    #
+                    load yaml {_d01} as {_d01}
+                    load yaml {_d02} as {_d02}
+                    load yaml {_d03} as {_d03}
+                    load yaml {_d04} as {_d04}
+                    #
+                    load yaml {_d05} as {_d05}
+                    load yaml {_d06} as {_d06}
+                    load yaml {_d07} as {_d07}
+                    load yaml {_d08} as {_d08}
+                    #
+                    load yaml {_d09} as {_d09}
+                    load yaml {_d10} as {_d10}
+                    load yaml {_d11} as {_d11}
+                    load yaml {_d12} as {_d12}
+                    #
+                    load yaml {_d13} as {_d13}
+                    load yaml {_d14} as {_d14}
+                    #
+
+                    #
+                    set {_li01::*} to yaml list "item_data" from {_d01}
+                    set {_li02::*} to yaml list "item_data" from {_d02}
+                    set {_li03::*} to yaml list "item_data" from {_d03}
+                    set {_li04::*} to yaml list "item_data" from {_d04}
+                    #
+                    set {_li05::*} to yaml list "item_data" from {_d05}
+                    set {_li06::*} to yaml list "item_data" from {_d06}
+                    set {_li07::*} to yaml list "item_data" from {_d07}
+                    set {_li08::*} to yaml list "item_data" from {_d08}
+                    #
+                    set {_li09::*} to yaml list "item_data" from {_d09}
+                    set {_li10::*} to yaml list "item_data" from {_d10}
+                    set {_li11::*} to yaml list "item_data" from {_d11}
+                    set {_li12::*} to yaml list "item_data" from {_d12}
+                    #
+                    set {_li13::*} to yaml list "item_data" from {_d13}
+                    set {_li14::*} to yaml list "item_data" from {_d14}
+                    #
+
+                    #
+                    unload yaml {_d01}
+                    unload yaml {_d02}
+                    unload yaml {_d03}
+                    unload yaml {_d04}
+                    #
+                    unload yaml {_d05}
+                    unload yaml {_d06}
+                    unload yaml {_d07}
+                    unload yaml {_d08}
+                    #
+                    unload yaml {_d09}
+                    unload yaml {_d10}
+                    unload yaml {_d11}
+                    unload yaml {_d12}
+                    #
+                    unload yaml {_d13}
+                    unload yaml {_d14}
+                    #
+
+                    #
+                    set {fishing.fish.민물고기::*} to {_li01::*}
+                    set {fishing.fish.민물가재::*} to {_li02::*}
+                    set {fishing.fish.노가리::*} to {_li03::*}
+                    set {fishing.fish.농성어::*} to {_li04::*}
+                    #
+                    set {fishing.fish.틸라피아::*} to {_li05::*}
+                    set {fishing.fish.잉어::*} to {_li06::*}
+                    set {fishing.fish.참다랑어::*} to {_li07::*}
+                    set {fishing.fish.오징어::*} to {_li08::*}
+                    #
+                    set {fishing.fish.해파리::*} to {_li09::*}
+                    set {fishing.fish.바닷가재::*} to {_li10::*}
+                    set {fishing.fish.분홍연어::*} to {_li11::*}
+                    set {fishing.fish.붉은돔::*} to {_li12::*}
+                    #
+                    set {fishing.fish.문어::*} to {_li13::*}
+                    set {fishing.fish.넵튠조각::*} to {_li14::*}
+                    #
+
+                    send ""
+                    send "  {@w} &b등록을 완료하였습니다!"
+                    send ""
+                    
+                    give 1 of {fishing.fish.민물고기::1} to player
+                    give 1 of {fishing.fish.틸라피아::1} to player
+                    give 1 of {fishing.fish.해파리::1} to player
+                    give 1 of {fishing.fish.문어::1} to player
+                    give 1 of {fishing.fish.넵튠조각::1} to player
+
+                    stop
+
+                else:
+
+                    send ""
+                    send "  {@w} &7충분한 데이터 파일이 존재하지 않습니다!"
+                    send "  {@w} &e__Server_Data__/Main_Items &7에 스크립트상에"
+                    send "  {@w} &7필요한 데이터파일이 존재하는지 검토해주시기 바랍니다!"
+                    send ""
+                    send "  {@w} &b필요한 데이터 파일 명 (.yml):"
+                    send "&f&l>  &r&f낚시_민물고기, 낚시_민물가재, 낚시_노가리, 낚시_농성어,"
+                    send "&f낚시_탈라피아, 낚시_잉어, 낚시_참다랑어, 낚시_오징어, 낚시_해파리,"
+                    send "&f낚시_바닷가재, 낚시_분홍연어, 낚시_붉은돔, 낙시_문어"
+                    send "&f낚시_넵튠조각"
+                    send ""
+                    send "  {@w} &a데이터에 존재하는 어종:"
+                    send "&f&l>  &r&f%{_fl::*}%"
+                    send ""
+                    stop
+
+
+
+
+
+
+
+

@@ -1,0 +1,314 @@
+
+
+
+
+
+options:
+
+    dir: "plugins/_ServerData_/BackPacks"
+
+    isnew: "[ 새 가방 ]"
+
+
+
+
+
+# backpack_new(가방 uuid, 가방명칭, 생성날짜)
+function backpack_new_yml(uuid: string, named: string, now: string, main: string = "가방_"):
+    set {_f::*} to file list name "%{@dir}%/%{_main}%%{_named}%"
+
+    if {_f::*} contains "%{_uuid}%.yml":
+        stop
+
+    send "    &e[db]&a[신규 가방] &f%{@dir}%/%{_main}%%{_named}%/%{_uuid}%.yml&e를 생성하였습니다." to console
+    createYMLFile("%{@dir}%/%{_main}%%{_named}%/%{_uuid}%.yml", "value: Generation:%{_now}%")
+
+
+# 가방 중복 체크
+function backpack_check(uuid: string, named: string, main: string = "가방_") :: boolean:
+    set {_f::*} to file list name "%{@dir}%/%{_main}%%{_named}%"
+    if {_f::*} contains "%{_uuid}%.yml":
+        return true
+        stop
+    return false
+
+# 가방 로드
+function backpack_load(bp: string, uuid: string, main: string = "가방_"):
+    load yaml "%{@dir}%/%{_main}%%{_bp}%/%{_uuid}%.yml" as "%{_main}%%{_bp}%_%{_uuid}%"
+
+
+# 가방 세이브 & 언로드
+function backpack_sunload(bp: string, uuid: string, main: string = "가방_"):
+    save yaml "%{_main}%%{_bp}%_%{_uuid}%"
+    unload yaml "%{_main}%%{_bp}%_%{_uuid}%"
+
+
+
+# 가방 오픈 취소 (이유: 이전 가방과 uuid가 동일할때,)
+function backpack_cancel(p: offlineplayer):
+    play sound "BLOCK_NOTE_BLOCK_BASS" with volume 1 for {_p} at {_p}
+
+function backpack_new_gen_sound(p: offlineplayer):
+    play sound "entity.player.levelup" with volume 0.4 and pitch 1 for {_p}
+
+
+
+on inventory click:
+    if "%event-clicktype%" is "right mouse button":
+        if uncolored lore of event-item contains "[가방]":
+
+            # 겹친 가방 작동 x
+            if item amount of event-item > 1:
+                cancel event
+                title(player, "&c&l'새로운 가방'은 스택 사용이 불가능합니다.", "&e1개씩 분리 후 재사용 바랍니다.")
+                stop
+
+            set {_l::*} to uncolored lore of event-item
+            replace all "줄" and "가방" with "" in {_l::6}
+            replace all " " with "" in {_l::6}
+
+            # 이전에 오픈한 가방의 uuid가 같을때 오픈 취소
+            if {bp.last::%uuid of player%} is {_l::8}:
+                backpack_cancel(player)
+                cancel event
+                stop
+
+            if {_l::8} is {@isnew}:
+                set {_item} to event-item
+                set {_ci} to name of event-item
+                set {_cl::*} to lore of event-item
+
+                set {_uuid} to create_random_uuid()
+                set {_now} to now formatted as "yyyy년 MM월 dd일 aa HH시 mm분 ss초"
+                set {_cl::8} to "&7%{_uuid}%"
+                set {_l::8} to "%{_uuid}%"
+
+                loop 100 times:
+                    set {_check} to backpack_check({_uuid}, {_l::9})
+                    if {_check} is false:
+                        delete {_check}
+                        backpack_new_yml({_uuid}, {_l::9}, {_now})
+                        set event-slot to {_item} named {_ci} with lore {_cl::*}
+                        stop loop
+
+                if {_check} is true:
+                    send "  &7[System] &e앗! 무언가 문제가 생겼군요!" to player
+                    send "  &e다시 한번 시도해주시겠어요?" to player
+                    cancel event
+                    stop
+
+                if {_check} is not set:
+                    backpack_new_gen_sound(player)
+                    cancel event
+                    stop
+
+            if {_l::8} is not {@isnew}:
+
+                if backpack_check({_l::8}, {_l::9}) is false:
+                    backpack_cancel(player)
+                    send line_empty() to player
+                    send "  &7[System] &e앗! 무언가 문제가 생겼군요!" to player
+                    send "  &e...데이터에 결함이 있는 가방이예요..." to player
+                    delete {bp.last::%uuid of player%}
+                    delete {bp.name::%uuid of player%}
+                    delete {bp.lastsize::%uuid of player%}
+                    delete {bp.type::%uuid of player%}
+                    cancel event
+                    stop
+
+                # 안전을 위해 한번 닫음 (+ 가방 저장)
+                close player's inventory
+
+                set {bp.last::%uuid of player%} to {_l::8}
+                set {bp.last.type::%uuid of player%} to "가방"
+                set {bp.name::%uuid of player%} to {_l::9}
+                set {bp.lastsize::%uuid of player%} to {_l::6}
+                set {_l6} to {_l::6} parsed as integer
+                set {_tslot} to {_l6} * 9
+
+                backpack_load({_l::9}, {_l::8})
+                set {_bagin::*} to yaml list "Bag_in" from "가방_%{_l::9}%_%{_l::8}%"
+                backpack_sunload({_l::9}, {_l::8})
+                vchest(player, {_l6}, name of event-item)
+
+                if size of {_bagin::*} > 0:
+                    loop {_tslot} times:
+                        set slot loop-number - 1 of current inventory of player to {_bagin::%loop-number%}
+
+
+            cancel event
+
+
+        # 속가방
+        if uncolored lore of event-item contains "[속가방]":
+
+            # 겹친 가방 작동 x
+            if item amount of event-item > 1:
+                cancel event
+                title(player, "&c&l'새로운 가방'은 스택 사용이 불가능합니다.", "&e1개씩 분리 후 재사용 바랍니다.")
+                stop
+
+            set {_l::*} to uncolored lore of event-item
+            replace all "줄" and "가방" with "" in {_l::6}
+            replace all " " with "" in {_l::6}
+
+            # 이전에 오픈한 가방의 uuid가 같을때 오픈 취소
+            if {bp.last::%uuid of player%} is {_l::8}:
+                backpack_cancel(player)
+                cancel event
+                stop
+
+            if {_l::8} is {@isnew}:
+                set {_item} to event-item
+                set {_ci} to name of event-item
+                set {_cl::*} to lore of event-item
+
+                set {_uuid} to create_random_uuid()
+                set {_now} to now formatted as "yyyy년 MM월 dd일 aa HH시 mm분 ss초"
+                set {_cl::8} to "&7%{_uuid}%"
+                set {_l::8} to "%{_uuid}%"
+
+                loop 100 times:
+                    set {_check} to backpack_check({_uuid}, {_l::9}, "속가방_")
+                    if {_check} is false:
+                        delete {_check}
+                        backpack_new_yml({_uuid}, {_l::9}, {_now}, "속가방_")
+                        set event-slot to {_item} named {_ci} with lore {_cl::*}
+                        stop loop
+
+                if {_check} is true:
+                    send "  &7[System] &e앗! 무언가 문제가 생겼군요!" to player
+                    send "  &e다시 한번 시도해주시겠어요?" to player
+                    cancel event
+                    stop
+
+                if {_check} is not set:
+                    backpack_new_gen_sound(player)
+                    cancel event
+                    stop
+
+            if {_l::8} is not {@isnew}:
+
+                if backpack_check({_l::8}, {_l::9}, "속가방_") is false:
+                    backpack_cancel(player)
+                    send line_empty() to player
+                    send "  &7[System] &e앗! 무언가 문제가 생겼군요!" to player
+                    send "  &e...데이터에 결함이 있는 가방이예요.." to player
+                    delete {bp.last::%uuid of player%}
+                    delete {bp.name::%uuid of player%}
+                    delete {bp.lastsize::%uuid of player%}
+                    delete {bp.type::%uuid of player%}
+                    cancel event
+                    stop
+
+                # 안전을 위해 한번 닫음 (+ 가방 저장)
+                close player's inventory
+
+                set {bp.last::%uuid of player%} to {_l::8}
+                set {bp.last.type::%uuid of player%} to "속가방"
+                set {bp.name::%uuid of player%} to {_l::9}
+                set {bp.lastsize::%uuid of player%} to {_l::6}
+                set {bp.type::%uuid of player%} to "속가방_"
+                set {_l6} to {_l::6} parsed as integer
+                set {_tslot} to {_l6} * 9
+
+                backpack_load({_l::9}, {_l::8}, "속가방_")
+                set {_bagin::*} to yaml list "Bag_in" from "속가방_%{_l::9}%_%{_l::8}%"
+                backpack_sunload({_l::9}, {_l::8}, "속가방_")
+                vchest(player, {_l6}, name of event-item)
+
+                if size of {_bagin::*} > 0:
+                    loop {_tslot} times:
+                        set slot loop-number - 1 of current inventory of player to {_bagin::%loop-number%}
+
+            cancel event
+
+
+
+
+
+
+
+    # [액션 캔슬]
+    # 좌-클릭 / 좌-클릭 + 쉬프트 / 우-클릭 + 쉬프트 / F스왑
+    if "%event-clicktype%" is "left mouse button" or "left mouse button with shift" or "right mouse button with shift" or "swap offhand" or "number key":
+        if {bp.last::%uuid of player%} is not set:
+            stop 
+        if uncolored lore of event-item contains "[가방]":
+            set {_l::*} to uncolored lore of event-item
+            # 이전에 오픈한 가방의 uuid가 같을때 집기 취소
+            if {bp.last::%uuid of player%} is {_l::8}:
+                backpack_cancel(player)
+                cancel event
+                stop
+            # [가방] -> [가방] x
+            if {_l::1} is "[가방]":
+                backpack_cancel(player)
+                cancel event
+                stop
+            if {_l::1} is {bp.last.type::%uuid of player%}:
+                backpack_cancel(player)
+                cancel event
+                stop
+
+        if uncolored lore of event-item contains "[속가방]":
+            set {_l::*} to uncolored lore of event-item
+            # 이전에 오픈한 가방의 uuid가 같을때 집기 취소
+            if {bp.last::%uuid of player%} is {_l::8}:
+                backpack_cancel(player)
+                cancel event
+                stop
+            # [속가방] -> [가방] x
+            if {_l::1} is "[가방]":
+                backpack_cancel(player)
+                cancel event
+                stop
+            # [속가방] -> [가방] x
+            if {_l::1} is {bp.last.type::%uuid of player%}:
+                backpack_cancel(player)
+                cancel event
+                stop
+
+
+
+
+on inventory close:
+    if {bp.last::%uuid of player%} is set:
+        set {_i} to {bp.name::%uuid of player%}
+        set {_type} to {bp.type::%uuid of player%}
+        set {_uuid} to {bp.last::%uuid of player%}
+        set {_size} to {bp.lastsize::%uuid of player%} parsed as integer
+        set {_tslot} to {_size} * 9
+
+        delete {bp.name::%uuid of player%}
+        delete {bp.last::%uuid of player%}
+        delete {bp.lastsize::%uuid of player%}
+        delete {bp.type::%uuid of player%}
+
+        loop {_tslot} times:
+            add slot loop-number -1 of current inventory of player to {_vchest::*}
+
+        if {_type} is not set:
+            backpack_load({_i}, {_uuid})
+            set yaml list "Bag_in" from "가방_%{_i}%_%{_uuid}%" to {_vchest::*}
+            backpack_sunload({_i}, {_uuid})
+
+        if {_type} is set:
+            backpack_load({_i}, {_uuid}, "%{_type}%")
+            set yaml list "Bag_in" from "%{_type}%%{_i}%_%{_uuid}%" to {_vchest::*}
+            backpack_sunload({_i}, {_uuid}, "%{_type}%")
+
+# backpack_load(bp: string, uuid: string)
+# backpack_sunload(bp: string, uuid: string)
+
+
+
+
+
+
+
+
+
+
+
+
